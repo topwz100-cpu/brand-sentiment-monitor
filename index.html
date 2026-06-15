@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大客户舆情监测系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0d1221 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* 背景粒子效果 */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: rgba(100, 150, 255, 0.3);
+            border-radius: 50%;
+            animation: float 15s infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+        }
+
+        /* 主容器 */
+        .container {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        /* Logo区域 */
+        .logo-area {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .logo-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            background: linear-gradient(135deg, #00d4ff 0%, #0099ff 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            box-shadow: 0 0 40px rgba(0, 212, 255, 0.3);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 40px rgba(0, 212, 255, 0.3); }
+            50% { box-shadow: 0 0 60px rgba(0, 212, 255, 0.5); }
+        }
+
+        .logo-area h1 {
+            font-size: 32px;
+            font-weight: 300;
+            letter-spacing: 8px;
+            margin-bottom: 12px;
+            background: linear-gradient(90deg, #fff 0%, #00d4ff 50%, #fff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .logo-area p {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 4px;
+        }
+
+        /* 搜索区域 */
+        .search-container {
+            width: 100%;
+            max-width: 700px;
+            position: relative;
+        }
+
+        .search-box {
+            position: relative;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 4px;
+            backdrop-filter: blur(20px);
+            transition: all 0.3s ease;
+        }
+
+        .search-box:focus-within {
+            border-color: rgba(0, 212, 255, 0.5);
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.1);
+        }
+
+        .search-inner {
+            display: flex;
+            align-items: center;
+            padding: 16px 20px;
+            gap: 12px;
+        }
+
+        /* 品牌选择下拉 */
+        .brand-select {
+            position: relative;
+            min-width: 140px;
+            flex-shrink: 0;
+        }
+
+        .brand-select-trigger {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            color: #00d4ff;
+            white-space: nowrap;
+        }
+
+        .brand-select-trigger:hover {
+            background: rgba(0, 212, 255, 0.15);
+            border-color: rgba(0, 212, 255, 0.4);
+        }
+
+        .brand-select-trigger .arrow {
+            transition: transform 0.3s ease;
+            font-size: 10px;
+        }
+
+        .brand-select-trigger.active .arrow {
+            transform: rotate(180deg);
+        }
+
+        /* 下拉菜单 */
+        .brand-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            min-width: 280px;
+            max-height: 400px;
+            overflow-y: auto;
+            background: rgba(10, 14, 39, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 8px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 100;
+            backdrop-filter: blur(20px);
+        }
+
+        .brand-dropdown.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .brand-dropdown .dropdown-header {
+            padding: 8px 12px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 4px;
+        }
+
+        .brand-dropdown .brand-item {
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand-dropdown .brand-item:hover {
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .brand-dropdown .brand-item.selected {
+            background: rgba(0, 212, 255, 0.15);
+            color: #00d4ff;
+        }
+
+        .brand-dropdown .brand-item .check {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .brand-dropdown .brand-item.selected .check {
+            opacity: 1;
+        }
+
+        /* 搜索输入 */
+        .search-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 16px;
+            padding: 10px 0;
+            width: 100%;
+        }
+
+        .search-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* 搜索按钮 */
+        .search-btn {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #00d4ff 0%, #0099ff 100%);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .search-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+        }
+
+        .search-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 快捷标签 */
+        .quick-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 24px;
+            justify-content: center;
+        }
+
+        .quick-tag {
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .quick-tag:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: rgba(0, 212, 255, 0.3);
+            color: #00d4ff;
+        }
+
+        /* 统计信息 */
+        .stats {
+            display: flex;
+            gap: 40px;
+            margin-top: 60px;
+            padding-top: 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-item .number {
+            font-size: 36px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #00d4ff 0%, #0099ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-item .label {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 8px;
+        }
+
+        /* 搜索结果区域 */
+        .results-container {
+            width: 100%;
+            max-width: 900px;
+            margin-top: 40px;
+            display: none;
+        }
+
+        .results-container.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 0 10px;
+        }
+
+        .results-header h3 {
+            font-size: 18px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .results-header .count {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .news-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .news-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(0, 212, 255, 0.2);
+            transform: translateX(4px);
+        }
+
+        .news-card .title {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        .news-card .meta {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .news-card .sentiment {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .sentiment-positive { background: rgba(82, 196, 26, 0.15); color: #52c41a; }
+        .sentiment-negative { background: rgba(255, 77, 79, 0.15); color: #ff4d4f; }
+        .sentiment-neutral { background: rgba(250, 173, 20, 0.15); color: #faad14; }
+
+        /* 加载动画 */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 底部 */
+        .footer {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.2);
+            z-index: 1;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .logo-area h1 { font-size: 24px; letter-spacing: 4px; }
+            .search-inner { flex-wrap: wrap; }
+            .brand-select { width: 100%; }
+            .stats { gap: 20px; }
+            .stat-item .number { font-size: 28px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 背景粒子 -->
+    <div class="particles" id="particles"></div>
+
+    <div class="container">
+        <!-- Logo区域 -->
+        <div class="logo-area">
+            <div class="logo-icon">📡</div>
+            <h1>舆情监测中心</h1>
+            <p>BRAND SENTIMENT MONITOR</p>
+        </div>
+
+        <!-- 搜索区域 -->
+        <div class="search-container">
+            <div class="search-box">
+                <div class="search-inner">
+                    <div class="brand-select">
+                        <div class="brand-select-trigger" id="brandTrigger" onclick="toggleDropdown()">
+                            <span>🏢</span>
+                            <span id="selectedBrand">选择品牌</span>
+                            <span class="arrow">▼</span>
+                        </div>
+                        <div class="brand-dropdown" id="brandDropdown">
+                            <div class="dropdown-header">选择监测品牌</div>
+                            <div id="brandList"></div>
+                        </div>
+                    </div>
+                    <input type="text" class="search-input" id="searchInput" placeholder="输入关键词搜索舆情资讯..." onkeypress="handleKeyPress(event)">
+                    <button class="search-btn" onclick="search()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 快捷标签 -->
+            <div class="quick-tags" id="quickTags">
+                <span class="quick-tag" onclick="quickSearch('修丽可')">修丽可</span>
+                <span class="quick-tag" onclick="quickSearch('兰蔻')">兰蔻</span>
+                <span class="quick-tag" onclick="quickSearch('王小卤')">王小卤</span>
+                <span class="quick-tag" onclick="quickSearch('Swisse')">Swisse</span>
+                <span class="quick-tag" onclick="quickSearch('珀莱雅')">珀莱雅</span>
+                <span class="quick-tag" onclick="quickSearch('欧莱雅')">欧莱雅</span>
+            </div>
+        </div>
+
+        <!-- 加载动画 -->
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p style="margin-top: 16px; color: rgba(255,255,255,0.4); font-size: 14px;">正在搜索...</p>
+        </div>
+
+        <!-- 搜索结果 -->
+        <div class="results-container" id="resultsContainer">
+            <div class="results-header">
+                <h3>搜索结果</h3>
+                <span class="count" id="resultsCount"></span>
+            </div>
+            <div id="resultsList"></div>
+        </div>
+
+        <!-- 统计信息 -->
+        <div class="stats">
+            <div class="stat-item">
+                <div class="number" id="statBrands">39</div>
+                <div class="label">监测品牌</div>
+            </div>
+            <div class="stat-item">
+                <div class="number" id="statNews">0</div>
+                <div class="label">今日资讯</div>
+            </div>
+            <div class="stat-item">
+                <div class="number" id="statAlerts">0</div>
+                <div class="label">舆情预警</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">大客户舆情监测系统 © 2024</div>
+
+    <script>
+        // API地址配置（部署时修改为你的后端地址）
+        // 本地开发: http://localhost:8000
+        // 生产环境: https://your-server.com
+        const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+            ? 'http://localhost:8000'
+            : 'https://your-backend-server.com';  // 🔧 部署后改成你的阿里云服务器地址
+        let brands = [];
+        let selectedBrand = null;
+
+        // 初始化粒子背景
+        function initParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 15 + 's';
+                particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+                container.appendChild(particle);
+            }
+        }
+
+        // 加载品牌列表
+        async function loadBrands() {
+            try {
+                const response = await fetch(`${API_BASE}/brands/`);
+                brands = await response.json();
+                renderBrandList();
+                document.getElementById('statBrands').textContent = brands.length;
+            } catch (error) {
+                console.error('加载品牌失败:', error);
+            }
+        }
+
+        // 渲染品牌下拉列表
+        function renderBrandList() {
+            const list = document.getElementById('brandList');
+            list.innerHTML = brands.map(brand => `
+                <div class="brand-item" onclick="selectBrand('${brand.name}')">
+                    <span>${brand.name}</span>
+                    <span class="check">✓</span>
+                </div>
+            `).join('');
+        }
+
+        // 切换下拉菜单
+        function toggleDropdown() {
+            const dropdown = document.getElementById('brandDropdown');
+            const trigger = document.getElementById('brandTrigger');
+            dropdown.classList.toggle('show');
+            trigger.classList.toggle('active');
+        }
+
+        // 选择品牌
+        function selectBrand(brandName) {
+            selectedBrand = brandName;
+            document.getElementById('selectedBrand').textContent = brandName;
+            document.getElementById('searchInput').value = brandName;
+            toggleDropdown();
+            
+            // 更新选中状态
+            document.querySelectorAll('.brand-item').forEach(item => {
+                item.classList.remove('selected');
+                if (item.textContent.includes(brandName)) {
+                    item.classList.add('selected');
+                }
+            });
+        }
+
+        // 快捷搜索
+        function quickSearch(brandName) {
+            document.getElementById('searchInput').value = brandName;
+            selectBrand(brandName);
+            search();
+        }
+
+        // 搜索
+        async function search() {
+            const keyword = document.getElementById('searchInput').value.trim();
+            if (!keyword) return;
+
+            const loading = document.getElementById('loading');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const resultsList = document.getElementById('resultsList');
+
+            loading.classList.add('show');
+            resultsContainer.classList.remove('show');
+
+            try {
+                // 使用 XMLHttpRequest 替代 fetch，避免超时问题
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', `${API_BASE}/news/search?keyword=${encodeURIComponent(keyword)}&days=30&limit=10`, true);
+                xhr.timeout = 120000; // 120秒超时
+                
+                xhr.onload = function() {
+                    loading.classList.remove('show');
+                    
+                    if (xhr.status === 200) {
+                        const data = JSON.parse(xhr.responseText);
+                        
+                        if (data.articles && data.articles.length > 0) {
+                            document.getElementById('resultsCount').textContent = `共 ${data.total} 条`;
+                            
+                            resultsList.innerHTML = data.articles.map(article => {
+                                const sentimentClass = article.sentiment_label === 'positive' ? 'sentiment-positive' : 
+                                                       article.sentiment_label === 'negative' ? 'sentiment-negative' : 'sentiment-neutral';
+                                const sentimentText = article.sentiment_label === 'positive' ? '正面' : 
+                                                      article.sentiment_label === 'negative' ? '负面' : '中性';
+                                
+                                return `
+                                    <div class="news-card" onclick="window.open('${article.url}', '_blank')">
+                                        <div class="title">${article.title}</div>
+                                        <div class="meta">
+                                            <span>${article.source || '未知来源'}</span>
+                                            <span class="sentiment ${sentimentClass}">${sentimentText}</span>
+                                            <span>${article.published_at ? new Date(article.published_at).toLocaleDateString('zh-CN') : '近期'}</span>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+
+                            resultsContainer.classList.add('show');
+                        } else {
+                            resultsList.innerHTML = '<div style="text-align: center; padding: 40px; color: rgba(255,255,255,0.4);">未找到相关资讯</div>';
+                            resultsContainer.classList.add('show');
+                        }
+                    } else {
+                        resultsList.innerHTML = '<div style="text-align: center; padding: 40px; color: #ff4d4f;">搜索失败，请稍后重试</div>';
+                        resultsContainer.classList.add('show');
+                    }
+                };
+                
+                xhr.onerror = function() {
+                    loading.classList.remove('show');
+                    resultsList.innerHTML = '<div style="text-align: center; padding: 40px; color: #ff4d4f;">搜索失败，请检查网络连接</div>';
+                    resultsContainer.classList.add('show');
+                };
+                
+                xhr.ontimeout = function() {
+                    loading.classList.remove('show');
+                    resultsList.innerHTML = '<div style="text-align: center; padding: 40px; color: #ff4d4f;">搜索超时，请稍后重试</div>';
+                    resultsContainer.classList.add('show');
+                };
+                
+                xhr.send();
+
+            } catch (error) {
+                loading.classList.remove('show');
+                resultsList.innerHTML = '<div style="text-align: center; padding: 40px; color: #ff4d4f;">搜索失败: ' + error.message + '</div>';
+                resultsContainer.classList.add('show');
+            }
+        }
+
+        // 键盘事件
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                search();
+            }
+        }
+
+        // 点击外部关闭下拉
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('brandDropdown');
+            const trigger = document.getElementById('brandTrigger');
+            if (!dropdown.contains(e.target) && !trigger.contains(e.target)) {
+                dropdown.classList.remove('show');
+                trigger.classList.remove('active');
+            }
+        });
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initParticles();
+            loadBrands();
+        });
+    </script>
+</body>
+</html>
